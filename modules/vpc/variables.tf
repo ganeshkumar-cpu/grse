@@ -8,13 +8,16 @@ variable "cidr_block" {
   description = "CIDR block for the VPC"
 }
 
-variable "subnet_cidr" {
-  type        = string
-  description = "CIDR block for the subnet"
+variable "public_subnets" {
+  type = list(object({
+    cidr_block        = string
+    availability_zone = string
+  }))
 }
 
-variable "availability_zone" {
-  type        = string
-  description = "Availability zone for the subnet"
+variable "private_subnets" {
+  type = list(object({
+    cidr_block        = string
+    availability_zone = string
+  }))
 }
-
