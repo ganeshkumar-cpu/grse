@@ -2,16 +2,22 @@ provider "aws" {
   region = "ap-south-1"
 }
 
-# VPC module
 module "grse_vpc" {
-  source            = "./modules/vpc"
-  name              = "GRSE-vpc"
-  cidr_block        = "10.40.0.0/16"
-  subnet_cidr       = "10.40.1.0/24"
-  availability_zone = "ap-south-1a"
+  source     = "./modules/vpc"
+  name       = "GRSE-vpc"
+  cidr_block = "10.40.0.0/16"
+
+  public_subnets = [
+    { cidr_block = "10.40.101.0/24", availability_zone = "ap-south-1a" },
+    { cidr_block = "10.40.102.0/24", availability_zone = "ap-south-1b" }
+  ]
+
+  private_subnets = [
+    { cidr_block = "10.40.11.0/24", availability_zone = "ap-south-1a" },
+    { cidr_block = "10.40.12.0/24", availability_zone = "ap-south-1b" }
+  ]
 }
 
-# Create Security Group allowing SSH (port 22) inbound
 resource "aws_security_group" "grse_sg" {
   name        = "GRSE-SG"
   description = "Allow SSH inbound"
@@ -22,7 +28,7 @@ resource "aws_security_group" "grse_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Change this to your IP range for better security
+    cidr_blocks = ["0.0.0.0/0"]  # Open to all (consider restricting)
   }
 
   egress {
@@ -37,15 +43,13 @@ resource "aws_security_group" "grse_sg" {
   }
 }
 
-# EC2 instance module, now using the created security group
 module "grse_instance" {
   source             = "./modules/ec2"
   name               = "GRSE-APP&DB"
   ami                = "ami-0f58c8c41c0f44f06"
   instance_type      = "t4g.2xlarge"
   key_name           = "GRSE-key"
-  subnet_id          = module.grse_vpc.subnet_id
-  security_group_ids = [aws_security_group.grse_sg.id]  # Use created security group here
+  subnet_id          = module.grse_vpc.public_subnet_ids[0]  # Launch in first public subnet
+  security_group_ids = [aws_security_group.grse_sg.id]
   root_volume        = 30
 }
-
